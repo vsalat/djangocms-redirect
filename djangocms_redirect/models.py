@@ -18,8 +18,7 @@ RESPONSE_CODES = (
 
 @python_2_unicode_compatible
 class Redirect(models.Model):
-    site = models.ForeignKey(Site, verbose_name=_('site'),
-                             on_delete=models.CASCADE)
+    site = models.ForeignKey(Site, verbose_name=_('site'), on_delete=models.CASCADE)
     old_path = models.CharField(
         _('redirect from'),
         max_length=200,

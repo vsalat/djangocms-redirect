@@ -48,6 +48,8 @@ setup(
     long_description=readme + '\n\n' + history,
     author='Paolo Romolini',
     author_email='p.romolini@nephila.it',
+    maintainer='Nephila',
+    maintainer_email='web@nephila.digital',
     url='https://github.com/nephila/djangocms-redirect',
     packages=[
         'djangocms_redirect',
@@ -61,10 +63,11 @@ setup(
     keywords='djangocms-redirect',
     test_suite='cms_helper.run',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Framework :: Django',
-        'Framework :: Django :: 1.8',
-        'Framework :: Django :: 1.9',
+        'Framework :: Django :: 1.11',
+        'Framework :: Django :: 2.0',
+        'Framework :: Django :: 2.1',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
@@ -72,7 +75,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
 )
