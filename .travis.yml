@@ -51,3 +51,7 @@ matrix:
     env: TOXENV='isort'
   - python: 3.5
     env: TOXENV='docs'
+  - python: 2.7
+    env: DJANGO='django21' CMS='cms36'
+  - python: 2.7
+    env: DJANGO='django20' CMS='cms36'
