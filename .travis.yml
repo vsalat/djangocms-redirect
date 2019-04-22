@@ -16,6 +16,9 @@ env:
   - TOXENV='docs'
   - DJANGO='django111' CMS='cms34'
   - DJANGO='django111' CMS='cms35'
+  - DJANGO='django18' CMS='cms34'
+  - DJANGO='django18' CMS='cms35'
+
 
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
