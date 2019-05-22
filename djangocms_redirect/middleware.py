@@ -39,7 +39,8 @@ class RedirectMiddleware(MiddlewareMixin):
         ):
             return response
 
-        full_path = request.get_full_path()
+        full_path, part, querystring = request.get_full_path().partition('?')
+        querystring = '%s%s' % (part, querystring)
         current_site = get_current_site(request)
         r = None
         key = '{0}_{1}'.format(full_path, settings.SITE_ID)
@@ -75,9 +76,13 @@ class RedirectMiddleware(MiddlewareMixin):
         if cached_redirect['redirect'] == '':
             return self.response_gone_class()
         if cached_redirect['status_code'] == '302':
-            return self.response_redirect_class(cached_redirect['redirect'])
+            return self.response_redirect_class(
+                '%s%s' % (cached_redirect['redirect'], querystring)
+            )
         elif cached_redirect['status_code'] == '301':
-            return self.response_permanent_redirect_class(cached_redirect['redirect'])
+            return self.response_permanent_redirect_class(
+                '%s%s' % (cached_redirect['redirect'], querystring)
+            )
         elif cached_redirect['status_code'] == '410':
             return self.response_gone_class()
 

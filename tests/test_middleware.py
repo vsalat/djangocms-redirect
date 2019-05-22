@@ -41,6 +41,20 @@ class TestRedirect(BaseRedirectTest):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, redirect.new_path, status_code=302)
 
+    def test_querystring_redirect(self):
+        pages = self.get_pages()
+
+        redirect = Redirect.objects.create(
+            site=self.site_1,
+            old_path=pages[1].get_absolute_url(),
+            new_path=pages[0].get_absolute_url(),
+            response_code='302',
+        )
+
+        response = self.client.get(pages[1].get_absolute_url() + '?Some_query_param')
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, redirect.new_path + '?Some_query_param', status_code=302)
+
     def test_410_redirect(self):
         pages = self.get_pages()
 
