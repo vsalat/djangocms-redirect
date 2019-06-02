@@ -3,10 +3,25 @@
 History
 -------
 
+0.3.1 (2019-06-02)
+++++++++++++++++++
+
+* Ignore querystring when matching redirect objects
+
 0.3.0 (2019-03-11)
 ++++++++++++++++++
 
 * Added compatibility to Django 2.0, 2.1
+
+0.2.2 (2019-06-02)
+++++++++++++++++++
+
+* Ignore querystring when matching redirect objects
+
+0.2.1 (2019-04-22)
+++++++++++++++++++
+
+* Fixed compatibility issue with Django 1.8
 
 0.2.0 (2018-11-03)
 ++++++++++++++++++

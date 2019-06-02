@@ -35,7 +35,8 @@ class RedirectMiddleware(MiddlewareMixin):
         ):
             return response
 
-        full_path = request.get_full_path()
+        full_path, part, querystring = request.get_full_path().partition('?')
+        querystring = '%s%s' % (part, querystring)
         current_site = get_current_site(request)
         r = None
         key = get_key_from_path_and_site(full_path, settings.SITE_ID)
@@ -45,18 +46,12 @@ class RedirectMiddleware(MiddlewareMixin):
                 r = Redirect.objects.get(site=current_site, old_path=full_path)
             except Redirect.DoesNotExist:
                 pass
-            if r is None and settings.APPEND_SLASH and not request.path.endswith('/'):
+            if r is None and not settings.APPEND_SLASH and not request.path.endswith('/'):
                 try:
-                    try:
-                        r = Redirect.objects.get(
-                            site=current_site,
-                            old_path=request.get_full_path(force_append_slash=True),
-                        )
-                    except TypeError:
-                        r = Redirect.objects.get(
-                            site=current_site,
-                            old_path=request.get_full_path(),
-                        )
+                    r = Redirect.objects.get(
+                        site=current_site,
+                        old_path=request.get_full_path(force_append_slash=True),
+                    )
                 except Redirect.DoesNotExist:
                     pass
             cached_redirect = {
@@ -71,9 +66,13 @@ class RedirectMiddleware(MiddlewareMixin):
         if cached_redirect['redirect'] == '':
             return self.response_gone_class()
         if cached_redirect['status_code'] == '302':
-            return self.response_redirect_class(cached_redirect['redirect'])
+            return self.response_redirect_class(
+                '%s%s' % (cached_redirect['redirect'], querystring)
+            )
         elif cached_redirect['status_code'] == '301':
-            return self.response_permanent_redirect_class(cached_redirect['redirect'])
+            return self.response_permanent_redirect_class(
+                '%s%s' % (cached_redirect['redirect'], querystring)
+            )
         elif cached_redirect['status_code'] == '410':
             return self.response_gone_class()
 
