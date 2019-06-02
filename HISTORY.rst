@@ -3,7 +3,12 @@
 History
 -------
 
-0.1.1 (unreleased)
+0.1.2 (2019-06-02)
+++++++++++++++++++
+
+* Ignore querystring when matching redirect objects
+
+0.1.1 (2017-11-19)
 ++++++++++++++++++
 
 * Added missing migration.
