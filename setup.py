@@ -46,6 +46,8 @@ setup(
     version=version,
     description="""A django CMS enabled application to handle redirects""",
     long_description=readme + '\n\n' + history,
+    maintainer='Nephila',
+    maintainer_email='web@nephila.it',
     author='Paolo Romolini',
     author_email='p.romolini@nephila.it',
     url='https://github.com/nephila/djangocms-redirect',
