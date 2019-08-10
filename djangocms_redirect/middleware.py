@@ -36,24 +36,23 @@ class RedirectMiddleware(MiddlewareMixin):
             return response
 
         full_path, part, querystring = request.get_full_path().partition('?')
+        full_path_slash, __, __ = request.get_full_path(force_append_slash=True).partition('?')
         querystring = '%s%s' % (part, querystring)
         current_site = get_current_site(request)
         r = None
         key = get_key_from_path_and_site(full_path, settings.SITE_ID)
         cached_redirect = cache.get(key)
+        filters = dict(site=current_site, old_path=full_path)
+        filters_slash = dict(site=current_site, old_path=full_path_slash)
         if not cached_redirect:
             try:
-                r = Redirect.objects.get(site=current_site, old_path=full_path)
+                r = Redirect.objects.get(**filters)
             except Redirect.DoesNotExist:
-                pass
-            if r is None and not settings.APPEND_SLASH and not request.path.endswith('/'):
-                try:
-                    r = Redirect.objects.get(
-                        site=current_site,
-                        old_path=request.get_full_path(force_append_slash=True),
-                    )
-                except Redirect.DoesNotExist:
-                    pass
+                if not settings.APPEND_SLASH and not request.path.endswith('/'):
+                    try:
+                        r = Redirect.objects.get(**filters_slash)
+                    except Redirect.DoesNotExist:
+                        pass
             cached_redirect = {
                 'site': settings.SITE_ID,
                 'redirect': r.new_path if r else None,
