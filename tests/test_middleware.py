@@ -2,6 +2,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 from django.test.utils import override_settings
+
 from djangocms_redirect.models import Redirect
 
 from .base import BaseRedirectTest
@@ -182,6 +183,3 @@ else:
                 self.assertRedirects(response, expected_url, status_code=302)
             except memcache.Client.MemcachedKeyLengthError:
                 self.fail("memcache.Client.MemcachedKeyLengthError raised")
-
-
-
