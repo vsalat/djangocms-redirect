@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 
+from operator import itemgetter
+
 from django import http
 from django.apps import apps
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
+from django.db.models import Q
 from django.utils.deprecation import MiddlewareMixin
 
 from .models import Redirect
@@ -20,12 +23,12 @@ class RedirectMiddleware(MiddlewareMixin):
     response_redirect_class = http.HttpResponseRedirect
     response_permanent_redirect_class = http.HttpResponsePermanentRedirect
 
+    no_site_message = 'You cannot use RedirectFallbackMiddleware ' \
+                      'when django.contrib.sites is not installed.'
+
     def __init__(self, *args, **kwargs):
         if not apps.is_installed('django.contrib.sites'):
-            raise ImproperlyConfigured(
-                'You cannot use RedirectFallbackMiddleware when '
-                'django.contrib.sites is not installed.'
-            )
+            raise ImproperlyConfigured(self.no_site_message)
         super(RedirectMiddleware, self).__init__(*args, **kwargs)
 
     def do_redirect(self, request, response=None):
@@ -53,6 +56,8 @@ class RedirectMiddleware(MiddlewareMixin):
                         r = Redirect.objects.get(**filters_slash)
                     except Redirect.DoesNotExist:
                         pass
+            if not r:
+                r = self._match_substring(full_path)
             cached_redirect = {
                 'site': settings.SITE_ID,
                 'redirect': r.new_path if r else None,
@@ -86,3 +91,19 @@ class RedirectMiddleware(MiddlewareMixin):
         if redirect:
             return redirect
         return response
+
+    def _match_substring(self, original_path):
+        redirects = [
+            (r.old_path, r) for r in Redirect.objects.filter(
+                Q(subpath_match=True) | Q(catchall_redirect=True)
+            )
+        ]
+        redirects = sorted(redirects, key=itemgetter(0), reverse=True)
+        for url in redirects:
+            if original_path.startswith(url[0]):
+                redirect = url[1]
+                if redirect.subpath_match:
+                    # we change this in memory only to return the proper redirect object
+                    # without persisting the change
+                    redirect.new_path = original_path.replace(redirect.old_path, redirect.new_path)
+                return redirect

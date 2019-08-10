@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.test.utils import override_settings
+from django.utils.encoding import force_text
 
+from djangocms_redirect.middleware import RedirectMiddleware
 from djangocms_redirect.models import Redirect
 
 from .base import BaseRedirectTest
@@ -13,6 +17,8 @@ class TestRedirect(BaseRedirectTest):
     _pages_data = (
         {'en': {'title': 'home page', 'template': 'page.html', 'publish': True}},
         {'en': {'title': 'test page', 'template': 'page.html', 'publish': True}},
+        {'en': {'title': 'internal page', 'template': 'page.html', 'publish': True,
+                'parent': 'test-page'}},
     )
 
     def test_301_redirect(self):
@@ -25,9 +31,29 @@ class TestRedirect(BaseRedirectTest):
             response_code='301',
         )
 
-        response = self.client.get(pages[1].get_absolute_url())
+        with self.assertNumQueries(1):
+            response = self.client.get(pages[1].get_absolute_url())
         self.assertEqual(response.status_code, 301)
         self.assertRedirects(response, redirect.new_path, status_code=301)
+
+    def test_cached_redirect(self):
+        pages = self.get_pages()
+
+        redirect = Redirect.objects.create(
+            site=self.site_1,
+            old_path=pages[1].get_absolute_url(),
+            new_path=pages[0].get_absolute_url(),
+            response_code='301',
+        )
+
+        with self.assertNumQueries(1):
+            response = self.client.get(pages[1].get_absolute_url())
+        self.assertEqual(response.status_code, 301)
+        self.assertRedirects(response, redirect.new_path, status_code=301)
+
+        with self.assertNumQueries(0):
+            response = self.client.get(pages[1].get_absolute_url())
+        self.assertEqual(response.status_code, 301)
 
     def test_302_redirect(self):
         pages = self.get_pages()
@@ -39,7 +65,8 @@ class TestRedirect(BaseRedirectTest):
             response_code='302',
         )
 
-        response = self.client.get(pages[1].get_absolute_url())
+        with self.assertNumQueries(1):
+            response = self.client.get(pages[1].get_absolute_url())
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, redirect.new_path, status_code=302)
 
@@ -53,7 +80,8 @@ class TestRedirect(BaseRedirectTest):
             response_code='302',
         )
 
-        response = self.client.get(pages[1].get_absolute_url() + '?Some_query_param')
+        with self.assertNumQueries(1):
+            response = self.client.get(pages[1].get_absolute_url() + '?Some_query_param')
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, redirect.new_path + '?Some_query_param', status_code=302)
 
@@ -67,7 +95,8 @@ class TestRedirect(BaseRedirectTest):
             response_code='410',
         )
 
-        response = self.client.get(pages[1].get_absolute_url())
+        with self.assertNumQueries(1):
+            response = self.client.get(pages[1].get_absolute_url())
         self.assertEqual(response.status_code, 410)
 
         Redirect.objects.create(
@@ -76,21 +105,23 @@ class TestRedirect(BaseRedirectTest):
             response_code='302'
         )
 
-        response2 = self.client.get('/some-path/')
+        with self.assertNumQueries(1):
+            response2 = self.client.get('/some-path/')
         self.assertEqual(response2.status_code, 410)
 
     def test_use_response_404_only(self):
         pages = self.get_pages()
 
         with self.settings(DJANGOCMS_REDIRECT_USE_REQUEST=False):
-            redirect = Redirect.objects.create(
+            Redirect.objects.create(
                 site=self.site_1,
                 old_path=pages[1].get_absolute_url(),
                 new_path=pages[0].get_absolute_url(),
                 response_code='302',
             )
 
-            response = self.client.get(pages[1].get_absolute_url())
+            with self.assertNumQueries(8):
+                response = self.client.get(pages[1].get_absolute_url())
             self.assertEqual(response.status_code, 200)
 
     def test_use_response_no404(self):
@@ -104,7 +135,8 @@ class TestRedirect(BaseRedirectTest):
                 response_code='302',
             )
 
-            response = self.client.get(pages[1].get_absolute_url())
+            with self.assertNumQueries(9):
+                response = self.client.get(pages[1].get_absolute_url())
             self.assertEqual(response.status_code, 302)
             self.assertRedirects(response, redirect.new_path, status_code=302)
 
@@ -118,10 +150,12 @@ class TestRedirect(BaseRedirectTest):
             response_code='301',
         )
 
-        response = self.client.get(pages[1].get_absolute_url())
+        with self.assertNumQueries(1):
+            response = self.client.get(pages[1].get_absolute_url())
         self.assertRedirects(response, redirect.new_path, status_code=301)
         redirect.delete()
-        response2 = self.client.get(pages[1].get_absolute_url())
+        with self.assertNumQueries(7):
+            response2 = self.client.get(pages[1].get_absolute_url())
         self.assertEqual(response2.status_code, 200)
 
     def test_redirect_no_append_slash(self):
@@ -135,9 +169,139 @@ class TestRedirect(BaseRedirectTest):
                 response_code='301',
             )
 
-            response = self.client.get(pages[1].get_absolute_url().rstrip('/'))
+            with self.assertNumQueries(2):
+                response = self.client.get(pages[1].get_absolute_url().rstrip('/'))
             self.assertRedirects(response, redirect.new_path, status_code=301)
 
+    def test_redirect_no_append_slash_no_match(self):
+        pages = self.get_pages()
+
+        with override_settings(APPEND_SLASH=False):
+            Redirect.objects.create(
+                site=self.site_1,
+                old_path='/no-match',
+                new_path=pages[0].get_absolute_url(),
+                response_code='301',
+            )
+
+            with self.assertNumQueries(3):
+                response = self.client.get(pages[1].get_absolute_url().rstrip('/'))
+            self.assertEqual(404, response.status_code)
+
+
+class TestPartialMatch(BaseRedirectTest):
+    _pages_data = (
+        {'en': {'title': 'home page', 'template': 'page.html', 'publish': True}},
+        {'en': {'title': 'test page', 'template': 'page.html', 'publish': True}},
+        {'en': {'title': 'internal page', 'template': 'page.html', 'publish': True,
+                'parent': 'test-page'}},
+    )
+
+    def setUp(self):
+        super(TestPartialMatch, self).setUp()
+        Redirect.objects.create(
+            site=self.site_1,
+            old_path='/en/test',
+            new_path='/baz',
+            response_code='301',
+        )
+        Redirect.objects.create(
+            site=self.site_1,
+            old_path='/en/test-page/in',
+            new_path='/bar',
+            response_code='301',
+        )
+        Redirect.objects.create(
+            site=self.site_1,
+            old_path='/en/test-page/internal',
+            new_path='/not-match',
+            response_code='302',
+        )
+        Redirect.objects.create(
+            site=self.site_1,
+            old_path='/en/test-page/other/path',
+            new_path='/foo',
+            response_code='301',
+        )
+        Redirect.objects.create(
+            site=self.site_1,
+            old_path='/en/fobz/',
+            new_path='/fabz',
+            response_code='301',
+        )
+
+    def _patch_catchall_redirect(self, redirect):
+        redirect.catchall_redirect = True
+        redirect.save()
+        return redirect
+
+    def _patch_subpath_match(self, redirect):
+        redirect.subpath_match = True
+        redirect.save()
+        return redirect
+
+    def test_no_substring(self):
+        pages = self.get_pages()
+        with self.assertNumQueries(13):
+            response = self.client.get(pages[2].get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+
+    def test_partial_success(self):
+        pages = self.get_pages()
+        redirect = self._patch_catchall_redirect(Redirect.objects.get(old_path='/en/test-page/in'))
+        with self.assertNumQueries(2):
+            response = self.client.get(pages[2].get_absolute_url())
+        self.assertRedirects(
+            response, redirect.new_path, status_code=301, fetch_redirect_response=False
+        )
+
+    def test_partial_subpath_replace(self):
+        pages = self.get_pages()
+        self._patch_subpath_match(Redirect.objects.get(old_path='/en/test-page/in'))
+        with self.assertNumQueries(2):
+            response = self.client.get(pages[2].get_absolute_url())
+        new_path = pages[2].get_absolute_url().replace('/en/test-page/in', '/bar')
+        self.assertRedirects(
+            response, new_path, status_code=301, fetch_redirect_response=False
+        )
+
+    def test_all_partials(self):
+        pages = self.get_pages()
+        redirect = Redirect.objects.get(old_path='/en/test-page/internal')
+        for patched in Redirect.objects.all():
+            self._patch_catchall_redirect(patched)
+        with self.assertNumQueries(2):
+            response = self.client.get(pages[2].get_absolute_url())
+        self.assertRedirects(
+            response, redirect.new_path, status_code=302, fetch_redirect_response=False
+        )
+
+
+class TestNoSitesMatch(BaseRedirectTest):
+    _pages_data = (
+        {'en': {'title': 'home page', 'template': 'page.html', 'publish': True}},
+        {'en': {'title': 'test page', 'template': 'page.html', 'publish': True}},
+        {'en': {'title': 'internal page', 'template': 'page.html', 'publish': True,
+                'parent': 'test-page'}},
+    )
+    PATCHED_INSTALLED_APPS = [
+        app for app in settings.INSTALLED_APPS if app != 'django.contrib.sites'
+    ]
+
+    @override_settings(INSTALLED_APPS=PATCHED_INSTALLED_APPS)
+    def test_no_sites(self):
+        pages = self.get_pages()
+
+        Redirect.objects.create(
+            site=self.site_1,
+            old_path=pages[1].get_absolute_url(),
+            new_path=pages[0].get_absolute_url(),
+            response_code='301',
+        )
+
+        with self.assertRaises(ImproperlyConfigured) as context:
+            self.client.get(pages[1].get_absolute_url())
+        self.assertEqual(RedirectMiddleware.no_site_message, force_text(context.exception))
 
 try:
     import memcache
@@ -145,14 +309,20 @@ except ImportError:
     pass
 else:
     @override_settings(
-        CACHES = {
+        CACHES={
             'default': {
                 'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
                 'LOCATION': '127.0.0.1:11211',
             }
         }
     )
-    class TestMemcacheRedirect(TestRedirect):
+    class TestMemcacheRedirect(BaseRedirectTest):
+        _pages_data = (
+            {'en': {'title': 'home page', 'template': 'page.html', 'publish': True}},
+            {'en': {'title': 'test page', 'template': 'page.html', 'publish': True}},
+            {'en': {'title': 'internal page', 'template': 'page.html', 'publish': True,
+                    'parent': 'test-page'}},
+        )
 
         def test_fix_memcache_MemcachedKeyLengthError(self):
             """

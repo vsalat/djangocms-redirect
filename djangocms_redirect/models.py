@@ -38,6 +38,22 @@ class Redirect(models.Model):
         default=RESPONSE_CODES[0][0],
         help_text=_('This is the http response code returned if a destination '
                     'is specified. If no destination is specified the response code will be 410.'))
+    subpath_match = models.BooleanField(
+        _('Subpath match'),
+        default=False,
+        help_text=_(
+            'If selected all the pages starting with the given string will be redirected by '
+            'replacing the matching subpath with the provided redirect path.'
+        )
+    )
+    catchall_redirect = models.BooleanField(
+        _('Catchall redirect'),
+        default=False,
+        help_text=_(
+            'If selected all the pages starting with the given string will be redirected to the '
+            'given redirect path'
+        )
+    )
 
     class Meta:
         verbose_name = _('redirect')
