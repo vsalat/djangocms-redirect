@@ -23,8 +23,7 @@ class RedirectMiddleware(MiddlewareMixin):
     response_redirect_class = http.HttpResponseRedirect
     response_permanent_redirect_class = http.HttpResponsePermanentRedirect
 
-    no_site_message = 'You cannot use RedirectFallbackMiddleware ' \
-                      'when django.contrib.sites is not installed.'
+    no_site_message = 'RedirectFallbackMiddleware requires django.contrib.sites to work.'
 
     def __init__(self, *args, **kwargs):
         if not apps.is_installed('django.contrib.sites'):

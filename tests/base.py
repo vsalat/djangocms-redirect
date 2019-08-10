@@ -10,4 +10,3 @@ class BaseRedirectTest(BaseTestCase):
     def setUp(self):
         super(BaseRedirectTest, self).setUp()
         cache.clear()
-        print('clar cach')
