@@ -3,13 +3,14 @@
 History
 -------
 
-0.4.0 (unreleased)
+0.4.0 (2019-08-22)
 ++++++++++++++++++
 
 * Add compatibility with Django 2.2
 * Drop compatibility with Django < 1.11
 * Drop compatibility with django CMS < 3.6
 * Move to django-app-helper
+* Add subpath matching
 
 0.3.1 (2019-07-13)
 ++++++++++++++++++
