@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 
+from django.utils.http import urlunquote_plus
+
 from djangocms_redirect.models import Redirect
 
 from .base import BaseRedirectTest
@@ -54,6 +56,33 @@ class TestRedirect(BaseRedirectTest):
         response = self.client.get(pages[1].get_absolute_url() + '?Some_query_param')
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, redirect.new_path + '?Some_query_param', status_code=302)
+
+    def test_quoted_path_redirect(self):
+        pages = self.get_pages()
+
+        escaped_path = '/path%20%28escaped%29/'
+        redirect = Redirect.objects.create(
+            site=self.site_1,
+            old_path=escaped_path,
+            new_path=pages[0].get_absolute_url(),
+            response_code='302',
+        )
+
+        response = self.client.get(escaped_path)
+        self.assertEqual(response.status_code, 404)
+
+        redirect.old_path = '/path%20(escaped)/'
+        redirect.save()
+        response = self.client.get(escaped_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, redirect.new_path, status_code=302)
+
+        unescaped_path = urlunquote_plus(escaped_path)
+        redirect.old_path = unescaped_path
+        redirect.save()
+        response = self.client.get(escaped_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, redirect.new_path, status_code=302)
 
     def test_410_redirect(self):
         pages = self.get_pages()
