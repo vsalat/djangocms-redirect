@@ -51,6 +51,8 @@ class RedirectMiddleware(MiddlewareMixin):
                 ).partition('?')
                 possible_paths.extend([urlunquote_plus(full_path_slash), full_path_slash])
             except TypeError:
+                full_path_slash = '%s/' % full_path_quoted
+                possible_paths.extend([urlunquote_plus(full_path_slash), full_path_slash])
                 pass
         querystring = '%s%s' % (part, querystring)
         current_site = get_current_site(request)

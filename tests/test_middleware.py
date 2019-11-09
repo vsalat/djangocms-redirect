@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 
+from django.test import override_settings
 from django.utils.http import urlunquote_plus
 
 from djangocms_redirect.models import Redirect
@@ -56,6 +57,37 @@ class TestRedirect(BaseRedirectTest):
         response = self.client.get(pages[1].get_absolute_url() + '?Some_query_param')
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, redirect.new_path + '?Some_query_param', status_code=302)
+
+    @override_settings(APPEND_SLASH=True)
+    def test_append_slash_redirect(self):
+        pages = self.get_pages()
+
+        base_path = '/path%20(escaped)/'
+        redirect = Redirect.objects.create(
+            site=self.site_1,
+            old_path=base_path,
+            new_path=pages[0].get_absolute_url(),
+            response_code='302',
+        )
+        request_path = base_path.rstrip('/')
+        response = self.client.get(request_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, redirect.new_path, status_code=302)
+
+    @override_settings(APPEND_SLASH=False)
+    def test_append_slash_false_redirect(self):
+        pages = self.get_pages()
+
+        base_path = '/path%20(escaped)/'
+        redirect = Redirect.objects.create(
+            site=self.site_1,
+            old_path=base_path,
+            new_path=pages[0].get_absolute_url(),
+            response_code='302',
+        )
+        request_path = base_path.rstrip('/')
+        response = self.client.get(request_path)
+        self.assertEqual(response.status_code, 404)
 
     def test_quoted_path_redirect(self):
         pages = self.get_pages()

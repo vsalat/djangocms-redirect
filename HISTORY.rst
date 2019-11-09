@@ -7,6 +7,7 @@ History
 ++++++++++++++++++
 
 * Add support to match unquoted strings as redirect old path
+* Fix APPEND_SLASH support in Django 1.8
 
 0.2.2 (2019-06-02)
 ++++++++++++++++++
