@@ -3,6 +3,11 @@
 History
 -------
 
+0.2.3 (unreleased)
+++++++++++++++++++
+
+* Add support to match unquoted strings as redirect old path
+
 0.2.2 (2019-06-02)
 ++++++++++++++++++
 
