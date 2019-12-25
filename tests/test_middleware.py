@@ -226,7 +226,7 @@ class TestRedirect(BaseRedirectTest):
                 response_code='301',
             )
 
-            with self.assertNumQueries(6):
+            with self.assertNumQueries(4):
                 response = self.client.get(pages[1].get_absolute_url().rstrip('/'))
             self.assertEqual(404, response.status_code)
 
