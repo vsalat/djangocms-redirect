@@ -11,6 +11,7 @@ from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Q
 from django.utils.deprecation import MiddlewareMixin
+from django.utils.http import urlunquote_plus
 
 from .models import Redirect
 from .utils import get_key_from_path_and_site
@@ -37,26 +38,33 @@ class RedirectMiddleware(MiddlewareMixin):
         ):
             return response
 
-        full_path, part, querystring = request.get_full_path().partition('?')
-        full_path_slash, __, __ = request.get_full_path(force_append_slash=True).partition('?')
+        full_path_quoted, part, querystring = request.get_full_path().partition('?')
+        possible_paths = [full_path_quoted]
+        if urlunquote_plus(full_path_quoted) != full_path_quoted:
+            possible_paths.append(urlunquote_plus(full_path_quoted))
+        if not settings.APPEND_SLASH and not request.path.endswith('/'):
+            try:
+                full_path_slash, __, __ = request.get_full_path(
+                    force_append_slash=True
+                ).partition('?')
+                possible_paths.extend([urlunquote_plus(full_path_slash), full_path_slash])
+            except TypeError:
+                pass
         querystring = '%s%s' % (part, querystring)
         current_site = get_current_site(request)
         r = None
-        key = get_key_from_path_and_site(full_path, settings.SITE_ID)
+        key = get_key_from_path_and_site(full_path_quoted, settings.SITE_ID)
         cached_redirect = cache.get(key)
-        filters = dict(site=current_site, old_path=full_path)
-        filters_slash = dict(site=current_site, old_path=full_path_slash)
         if not cached_redirect:
-            try:
-                r = Redirect.objects.get(**filters)
-            except Redirect.DoesNotExist:
-                if not settings.APPEND_SLASH and not request.path.endswith('/'):
-                    try:
-                        r = Redirect.objects.get(**filters_slash)
-                    except Redirect.DoesNotExist:
-                        pass
-            if not r:
-                r = self._match_substring(full_path)
+            for path in possible_paths:
+                filters = dict(site=current_site, old_path=path)
+                try:
+                    r = Redirect.objects.get(**filters)
+                    break
+                except Redirect.DoesNotExist:
+                    r = self._match_substring(path)
+                    if r:
+                        break
             cached_redirect = {
                 'site': settings.SITE_ID,
                 'redirect': r.new_path if r else None,
