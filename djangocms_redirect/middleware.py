@@ -40,16 +40,17 @@ class RedirectMiddleware(MiddlewareMixin):
 
         full_path_quoted, part, querystring = request.get_full_path().partition('?')
         possible_paths = [full_path_quoted]
-        if urlunquote_plus(full_path_quoted) != full_path_quoted:
-            possible_paths.append(urlunquote_plus(full_path_quoted))
+        full_path_unquoted = urlunquote_plus(full_path_quoted)
+        if full_path_unquoted != full_path_quoted:
+            possible_paths.append(urlunquote_plus(full_path_unquoted))
         if not settings.APPEND_SLASH and not request.path.endswith('/'):
-            try:
-                full_path_slash, __, __ = request.get_full_path(
-                    force_append_slash=True
-                ).partition('?')
-                possible_paths.extend([urlunquote_plus(full_path_slash), full_path_slash])
-            except TypeError:
-                pass
+            full_path_slash, __, __ = request.get_full_path(
+                force_append_slash=True
+            ).partition('?')
+            possible_paths.append(full_path_slash)
+            full_path_slash_unquoted = urlunquote_plus(full_path_slash)
+            if full_path_slash_unquoted != full_path_slash:
+                possible_paths.append(full_path_slash_unquoted)
         querystring = '%s%s' % (part, querystring)
         current_site = get_current_site(request)
         r = None
