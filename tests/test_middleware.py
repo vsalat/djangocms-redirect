@@ -22,6 +22,18 @@ class TestRedirect(BaseRedirectTest):
                 'parent': 'test-page'}},
     )
 
+    def test_str(self):
+        pages = self.get_pages()
+
+        redirect = Redirect.objects.create(
+            site=self.site_1,
+            old_path=pages[1].get_absolute_url(),
+            new_path=pages[0].get_absolute_url(),
+            response_code='301',
+        )
+        self.assertIn(pages[1].get_absolute_url(), force_text(redirect))
+        self.assertIn(pages[0].get_absolute_url(), force_text(redirect))
+
     def test_301_redirect(self):
         pages = self.get_pages()
 
