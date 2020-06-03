@@ -3,5 +3,5 @@ coverage==5.1
 flake8>=2.1.0
 tox>=1.7.0
 python-memcached==1.59
-django-app-helper
+django-app-helper==2.2.2
 
