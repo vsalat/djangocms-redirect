@@ -18,6 +18,7 @@ class TestRedirect(BaseRedirectTest):
     _pages_data = (
         {'en': {'title': 'home page', 'template': 'page.html', 'publish': True}},
         {'en': {'title': 'test page', 'template': 'page.html', 'publish': True}},
+        {'en': {'title': 'b', 'template': 'page.html', 'publish': True}},
         {'en': {'title': 'internal page', 'template': 'page.html', 'publish': True,
                 'parent': 'test-page'}},
     )
@@ -245,6 +246,85 @@ class TestRedirect(BaseRedirectTest):
             with self.assertNumQueries(4):
                 response = self.client.get(pages[1].get_absolute_url().rstrip('/'))
             self.assertEqual(404, response.status_code)
+
+    def test_no_slash_no_append_slash(self):
+        self.get_pages()
+
+        with override_settings(APPEND_SLASH=False):
+            Redirect.objects.create(
+                site=self.site_1,
+                old_path='/en/a',
+                new_path='/en/b/',
+                response_code='301',
+            )
+            # redirect match
+            response = self.client.get('/en/a')
+            self.assertRedirects(response, '/en/b/', status_code=301)
+
+            # no redirect match
+            response = self.client.get('/en/a/')
+            self.assertEqual(404, response.status_code)
+
+    def test_no_slash_append_slash(self):
+        self.get_pages()
+
+        with override_settings(APPEND_SLASH=True):
+            Redirect.objects.create(
+                site=self.site_1,
+                old_path='/en/a',
+                new_path='/en/b/',
+                response_code='301',
+            )
+
+            # django append slash settings kicks in before djangocms-redirect, redirecting to /a/
+            response = self.client.get('/en/a')
+            self.assertRedirects(response, '/en/a/', status_code=301, fetch_redirect_response=False)
+            response = self.client.get(response['Location'])
+            self.assertEqual(404, response.status_code)
+
+            # no redirect match
+            response = self.client.get('/en/a/')
+            self.assertEqual(404, response.status_code)
+
+    def test_slash_no_append_slash(self):
+        self.get_pages()
+
+        with override_settings(APPEND_SLASH=False):
+            Redirect.objects.create(
+                site=self.site_1,
+                old_path='/en/a/',
+                new_path='/en/b/',
+                response_code='301',
+            )
+            # no redirect match
+            response = self.client.get('/en/a')
+            self.assertRedirects(response, '/en/b/', status_code=301)
+
+            # redirect match
+            response = self.client.get('/en/a/')
+            self.assertRedirects(response, '/en/b/', status_code=301)
+
+    def test_slash_append_slash(self):
+        self.get_pages()
+
+        with override_settings(APPEND_SLASH=True):
+            Redirect.objects.create(
+                site=self.site_1,
+                old_path='/en/a/',
+                new_path='/en/b/',
+                response_code='301',
+            )
+
+            # django append slash settings kicks in before djangocms-redirect, redirecting to /a/
+            # then redirect match
+            response = self.client.get('/en/a')
+            self.assertRedirects(response, '/en/a/', status_code=301, fetch_redirect_response=False)
+            response = self.client.get(response['Location'])
+            self.assertRedirects(response, '/en/b/', status_code=301)
+
+            # redirect match
+            response = self.client.get('/en/a/')
+            self.assertRedirects(response, '/en/b/', status_code=301)
 
 
 class TestPartialMatch(BaseRedirectTest):
