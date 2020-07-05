@@ -11,23 +11,23 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+# fmt: off
 import os
 import sys
 
-import cms_helper
-import sphinx.environment
-from docutils.utils import get_source_line
-
-import djangocms_redirect
+import sphinx_rtd_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+# sys.path.insert(0, os.path.abspath('.'))
+parent = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, parent)
+sys.path.insert(0, os.path.join(parent, "tests"))
 
-cwd = os.getcwd()
-parent = os.path.dirname(cwd)
-sys.path.append(parent)
+import cms_helper  # isort:skip  # noqa
+import djangocms_redirect  # isort:skip  # noqa
+# fmt: on
 
 cms_helper.setup()
 
@@ -244,7 +244,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'djangocms-redirect', u'djangocms-redirect Documentation',
-   u'Paolo Romolini', 'djangocms-redirect', 'One line description of project.',
+   u'Nephila', 'djangocms-redirect', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -259,12 +259,3 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
-
-
-
-
-def _warn_node(self, msg, node, *args, **kwargs):
-    if not msg.startswith('nonlocal image URI found:'):
-        self._warnfunc(msg, '%s:%s' % get_source_line(node))
-
-sphinx.environment.BuildEnvironment.warn_node = _warn_node
